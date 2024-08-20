@@ -10,12 +10,13 @@ import (
 	"github.com/ntchjb/gohid/usb"
 	"github.com/ntchjb/ledger-go/adpu"
 	"github.com/ntchjb/ledger-go/device"
+	"github.com/ntchjb/ledger-go/eth"
 )
 
 func main() {
 	logger := slog.Default()
 	usbCtx := usb.NewGOUSBContext()
-	man := manager.NewDeviceManager(usbCtx)
+	man := manager.NewDeviceManager(usbCtx, logger)
 
 	defer func() {
 		if err := man.Close(); err != nil {
@@ -30,18 +31,22 @@ func main() {
 		return
 	}
 
-	logger.Info("Device info", "info", deviceInfos.String())
+	fmt.Printf("DeviceInfos:\n%s\n", deviceInfos)
 
 	// Open Ledger Nano S
-	hidDevice, err := man.Open(0x2C97, 0x1015, hid.DeviceConfig{
+	hidDevice, err := man.Open(0x2C97, 0x1011, hid.DeviceConfig{
 		StreamLaneCount: hid.DEFAULT_ENDPOINT_STREAM_COUNT,
 	})
 	if err != nil {
-		logger.Error("unable to open device")
+		logger.Error("unable to open device", "err", err)
 		return
 	}
 	defer hidDevice.Close()
 
+	if err := hidDevice.SetAutoDetach(true); err != nil {
+		logger.Error("unable to set auto detach", "err", err)
+		return
+	}
 	if err := hidDevice.SetTarget(1, 0, 0); err != nil {
 		logger.Error("unable to set target of hid device", "err", err)
 		return
@@ -64,18 +69,21 @@ func main() {
 
 	ledgerDevice := device.NewLedgerDevice(hidDevice)
 	adpuProto := adpu.NewProtocol(ledgerDevice, 1234, logger)
+	ethApp := eth.NewEthereumApp(adpuProto)
 
 	ctx := context.Background()
-	res, sw, err := adpuProto.Send(ctx, 0xE0, 0x06, 0x00, 0x00, nil)
-	if err != nil {
-		logger.Error("unable to send ADPU protocol to device", "err", err)
-	}
 
-	logger.Info("SW", "sw", sw)
-	if sw != 0x9000 {
-		logger.Error("SW is not OK")
+	conf, err := ethApp.GetConfiguration(ctx)
+	if err != nil {
+		logger.Error("unable to get configuration", "err", err)
 		return
 	}
+	logger.Info("Configuration", "conf", conf)
 
-	logger.Info("Ledger ETH information", "arbitraryDataEnabled", res[0]&0x01, "erc20ProvisioningNecessary", res[0]&0x02, "starkEnabled", res[0]&0x04, "starkv2Supported", res[0]&0x08, "version", fmt.Sprintf("%d.%d.%d", res[1], res[2], res[3]))
+	address, err := ethApp.GetAddress(ctx, "m'/44'/60'/0'/0/0", false, false, 1)
+	if err != nil {
+		logger.Error("unable to get address", "err", err)
+		return
+	}
+	logger.Info("Address", "addr", address.Address.String(), "publicKey", address.PublicKey.String(), "chaincode", address.Chaincode.String())
 }

@@ -3,6 +3,7 @@ package adpu
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -14,6 +15,10 @@ const (
 	// ADPU header length for a block
 	ADPU_BLOCK_HEADER_LENGTH uint16 = 5
 	FRAME_HEADER_TAG         uint8  = 0x05
+)
+
+var (
+	ErrSWNotOK = errors.New("SW not OK")
 )
 
 type Response struct {
@@ -169,5 +174,26 @@ func (a *protocolImpl) Send(ctx context.Context, cla, ins, p1, p2 uint8, data []
 
 	sw := binary.BigEndian.Uint16(res[len(res)-2:])
 
-	return res, sw, nil
+	return res[:len(res)-2], sw, nil
+}
+
+func Send[RS Unmarshaler, RQ Marshaler](ctx context.Context, proto Protocol, cla, ins, p1, p2 uint8, data RQ, res RS) error {
+	dataBytes, err := Marshal(data)
+	if err != nil {
+		return fmt.Errorf("unable to marshal data: %w", err)
+	}
+	response, sw, err := proto.Send(ctx, cla, ins, p1, p2, dataBytes)
+	if err != nil {
+		return fmt.Errorf("unable to send command to device: %w", err)
+	}
+
+	if sw != SW_OK {
+		return fmt.Errorf("sw code: %s: %w", SWMessage[sw], ErrSWNotOK)
+	}
+
+	if err := Unmarshal(response, res); err != nil {
+		return fmt.Errorf("unable to unmarshal response: %w", err)
+	}
+
+	return nil
 }
