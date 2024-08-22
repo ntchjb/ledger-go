@@ -3,10 +3,12 @@ module github.com/ntchjb/ledger-go
 go 1.22
 
 require (
+	github.com/holiman/uint256 v1.3.1
 	github.com/ntchjb/gohid v0.0.0-20240820093356-86de04e71841
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.26.0
+	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 )
 
 require (

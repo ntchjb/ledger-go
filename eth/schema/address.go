@@ -6,13 +6,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-)
 
-type GetAddressRequest struct {
-	// BIP-32 path for accessing an address in HD wallets
-	BIP32Path string
-	ChainID   uint64
-}
+	"github.com/ntchjb/ledger-go/adpu"
+)
 
 // Examples
 // BIP32Path = "m'/44'/60'/2'/0/0"
@@ -20,9 +16,9 @@ type GetAddressRequest struct {
 // #2 Remove "m" character => ["44'", "60'", "2'", "0", "0"]
 // #3 Trim single quote => ["44", "60", "2", "0", "0"]
 // #4 Add 1's bit at MSB position for those paths that have single quote
-func (c *GetAddressRequest) splitPaths() ([]uint32, error) {
+func SplitBIP32Paths(bip32Path string) ([]uint32, error) {
 	var res []uint32
-	paths := strings.Split(c.BIP32Path, "/")
+	paths := strings.Split(bip32Path, "/")
 	// ignore leading 'm' character
 	if paths[0] == "m'" {
 		paths = paths[1:]
@@ -44,12 +40,24 @@ func (c *GetAddressRequest) splitPaths() ([]uint32, error) {
 	return res, nil
 }
 
-func (c *GetAddressRequest) MarshalADPU() ([]byte, error) {
-	paths, err := c.splitPaths()
+type BIP32Path string
+
+func (p *BIP32Path) Len() int {
+	paths, err := SplitBIP32Paths(string(*p))
+	if err != nil {
+		return 0
+	}
+
+	return 1 + len(paths)*4
+}
+
+func (p *BIP32Path) MarshalADPU() ([]byte, error) {
+	paths, err := SplitBIP32Paths(string(*p))
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to split paths %s: %w", c.BIP32Path, err)
+		return nil, fmt.Errorf("unable to split paths %s: %w", *p, err)
 	}
+
 	res := make([]byte, 1+len(paths)*4)
 
 	res[0] = byte(len(paths))
@@ -57,13 +65,28 @@ func (c *GetAddressRequest) MarshalADPU() ([]byte, error) {
 		binary.BigEndian.PutUint32(res[1+i*4:i*4+5], num)
 	}
 
+	return res, nil
+}
+
+type GetAddressRequest struct {
+	// BIP-32 path for accessing an address in HD wallets
+	BIP32Path BIP32Path
+	ChainID   uint64
+}
+
+func (c *GetAddressRequest) MarshalADPU() ([]byte, error) {
+	buf, err := adpu.Marshal(&c.BIP32Path)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal BIP-32 path: %w", err)
+	}
+
 	if c.ChainID > 0 {
 		var chainIDBytes [8]byte
 		binary.BigEndian.PutUint64(chainIDBytes[:], c.ChainID)
-		res = append(res, chainIDBytes[:]...)
+		buf = append(buf, chainIDBytes[:]...)
 	}
 
-	return res, nil
+	return buf, nil
 }
 
 type GetAddressResponse struct {

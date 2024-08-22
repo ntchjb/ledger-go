@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-type Configuration struct {
+type GetConfigurationResponse struct {
 	ArbitraryDataEnabled       bool
 	ERC20ProvisioningNecessary bool
 	StarkEnabled               bool
@@ -12,7 +12,7 @@ type Configuration struct {
 	Version                    string
 }
 
-func (c *Configuration) UnmarshalADPU(data []byte) error {
+func (c *GetConfigurationResponse) UnmarshalADPU(data []byte) error {
 	if len(data) < 4 {
 		return fmt.Errorf("data too short, expected %d, got %d", 4, len(data))
 	}

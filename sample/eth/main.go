@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/ntchjb/gohid/hid"
 	"github.com/ntchjb/gohid/manager"
@@ -11,10 +13,16 @@ import (
 	"github.com/ntchjb/ledger-go/adpu"
 	"github.com/ntchjb/ledger-go/device"
 	"github.com/ntchjb/ledger-go/eth"
+	"github.com/ntchjb/ledger-go/log"
 )
 
 func main() {
-	logger := slog.Default()
+	logLevel := new(slog.LevelVar)
+	logLevel.Set(slog.LevelDebug)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+
 	usbCtx := usb.NewGOUSBContext()
 	man := manager.NewDeviceManager(usbCtx, logger)
 
@@ -69,7 +77,7 @@ func main() {
 
 	ledgerDevice := device.NewLedgerDevice(hidDevice)
 	adpuProto := adpu.NewProtocol(ledgerDevice, 1234, logger)
-	ethApp := eth.NewEthereumApp(adpuProto)
+	ethApp := eth.NewEthereumApp(adpuProto, logger)
 
 	ctx := context.Background()
 
@@ -86,4 +94,16 @@ func main() {
 		return
 	}
 	logger.Info("Address", "addr", address.Address.String(), "publicKey", address.PublicKey.String(), "chaincode", address.Chaincode.String())
+
+	// Legacy
+	// rawTx, _ := hex.DecodeString("f901e980830f4240830205b5943cd1dfb81c50a5300c60a181ed145a7286d81e0a80b901c4183fb413000000000000000000000000794a61358d6845594f94dc1db02a252b5b4814ad0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000b41544f4b454e5f494d504c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b41544f4b454e5f494d504c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430783030000000000000000000000000000000000000000000000000000000000a0000")
+	// EIP-1559
+	rawTx, _ := hex.DecodeString("02f870018313fc97808432c3453a825a3c94388c818ca8b9251b393131c08a736a67ccb192978768f233feb2c98a80c080a0e21a0b9a80dc27cd2c9ccc551a7df692b83d2a522aa62fd47949f07363afcceaa07aaef211074d6e8c132e937202da0a0ce6648f328cd6d5e90e41b82955e3b224")
+	res, err := ethApp.SignTransaction(ctx, "m'/44'/60'/0'/0/0", rawTx)
+	if err != nil {
+		logger.Error("unable to sign tx", "err", err)
+		return
+	}
+
+	logger.Info("Signature", "R", log.HexDisplay(res.R[:]), "S", log.HexDisplay(res.S[:]), "V", res.V)
 }

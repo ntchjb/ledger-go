@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/ntchjb/ledger-go/device"
+	"github.com/ntchjb/ledger-go/log"
 )
 
 const (
@@ -69,7 +70,7 @@ func (a *protocolImpl) createDataFrames(data []byte) [][]byte {
 	data = append(dataLengthBytes, data...)
 	data = append(data, padding...)
 
-	a.logger.Debug("Final data before convert to frames", "data", data)
+	a.logger.Debug("Final data before convert to frames", "data", log.HexDisplay(data))
 
 	for i := uint16(0); i < numBlocks; i++ {
 		header := make([]byte, 5)
@@ -80,7 +81,7 @@ func (a *protocolImpl) createDataFrames(data []byte) [][]byte {
 		blocks = append(blocks, append(header, data[i*blockSizeWithoutHeader:(i+1)*blockSizeWithoutHeader]...))
 	}
 
-	a.logger.Debug("Frames", "blocks", blocks)
+	a.logger.Debug("Frames", "blockCount", len(blocks))
 
 	return blocks
 }
@@ -125,7 +126,7 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 	a.exchangeLock.Lock()
 	defer a.exchangeLock.Unlock()
 
-	a.logger.Debug("ADPU Command", "command", command)
+	a.logger.Debug("ADPU Command", "command", log.HexDisplay(command))
 
 	// #1: Send ADPU command to device, in blocks
 	blocks := a.createDataFrames(command)
@@ -155,7 +156,7 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 		expectedSequence++
 	}
 
-	a.logger.Debug("ADPU Response", "res", res.Data)
+	a.logger.Debug("ADPU Response", "res", log.HexDisplay(res.Data))
 
 	return res.Data, nil
 }
@@ -165,11 +166,12 @@ func (a *protocolImpl) Send(ctx context.Context, cla, ins, p1, p2 uint8, data []
 	if len(data) > 255 {
 		return nil, 0, fmt.Errorf("maximum data length of ADPU command exceeded, expected <256, got %d", len(data))
 	}
+	a.logger.Debug("Sending ADPU command", "cla", cla, "ins", ins, "p1", p1, "p2", p2, "data", log.HexDisplay(data))
 	command = append([]byte{cla, ins, p1, p2, uint8(len(data))}, data...)
 
 	res, err := a.Exchange(ctx, command)
 	if err != nil {
-		return nil, 0, fmt.Errorf("unable to exchange ADPU, command: %v, err: %w", command, err)
+		return nil, 0, fmt.Errorf("unable to exchange ADPU, command: %s, err: %w", log.HexDisplay(command), err)
 	}
 
 	sw := binary.BigEndian.Uint16(res[len(res)-2:])
