@@ -54,14 +54,16 @@ func (a *protocolImpl) createDataFrames(data []byte) [][]byte {
 	a.logger.Debug("Creating data frames", "length", len(data))
 	var blocks [][]byte
 	dataLength := uint16(len(data))
+	// It's the length of this array: [dataLength..., data...]
+	noPaddingTotalLength := 2 + dataLength
 	blockSizeWithoutHeader := a.packetSize - ADPU_BLOCK_HEADER_LENGTH
-	numBlocks := dataLength / blockSizeWithoutHeader
-	if dataLength%blockSizeWithoutHeader != 0 {
+	numBlocks := noPaddingTotalLength / blockSizeWithoutHeader
+	if noPaddingTotalLength%blockSizeWithoutHeader != 0 {
 		numBlocks++
 	}
 	a.logger.Debug("Data frame properties", "numBlocks", numBlocks, "blockSizeWithoutHeader", blockSizeWithoutHeader)
 
-	padding := make([]byte, numBlocks*blockSizeWithoutHeader-dataLength+1)
+	padding := make([]byte, numBlocks*blockSizeWithoutHeader-noPaddingTotalLength+1)
 	dataLengthBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(dataLengthBytes, dataLength)
 
@@ -130,8 +132,9 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 
 	// #1: Send ADPU command to device, in blocks
 	blocks := a.createDataFrames(command)
-	for _, block := range blocks {
+	for i, block := range blocks {
 		_, err := a.Device.Write(ctx, block)
+		a.logger.Debug("SEND ==>", "i", i)
 		if err != nil {
 			return nil, fmt.Errorf("unable to write a block to HID device via interrupt OUT: %w", err)
 		}

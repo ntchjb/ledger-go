@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/ntchjb/ledger-go/adpu"
@@ -142,20 +143,59 @@ func DecodeTxInfo(rawTx []byte) (TxInfo, error) {
 	return txInfo, nil
 }
 
-type SignTransactionRequest struct {
+type SignTxRequest struct {
 	// HD wallet path used for signing
 	BIP32Path BIP32Path
-	// EVM serialized transaction data to be signed
-	RawTX []byte
+	// RLP serialized transaction data to be signed
+	Data []byte
 }
 
-func (c *SignTransactionRequest) MarshalADPU() ([]byte, error) {
+func (c *SignTxRequest) MarshalADPU() ([]byte, error) {
 	buf, err := adpu.Marshal(&c.BIP32Path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal BIP-32 path: %w", err)
 	}
 
-	buf = append(buf, c.RawTX...)
+	buf = append(buf, c.Data...)
+
+	return buf, nil
+}
+
+type SignPersonalMessageRequest struct {
+	// HD wallet path used for signing
+	BIP32Path BIP32Path
+	// Personal message, can have maximum length of MAX_UINT32
+	Data []byte
+}
+
+func (c *SignPersonalMessageRequest) MarshalADPU() ([]byte, error) {
+	buf, err := adpu.Marshal(&c.BIP32Path)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal BIP-32 path: %w", err)
+	}
+
+	messageLengthBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(messageLengthBytes, uint32(len(c.Data)))
+	buf = append(buf, messageLengthBytes...)
+	buf = append(buf, c.Data...)
+
+	return buf, nil
+}
+
+type SignEIP712HashedRequest struct {
+	// HD wallet path used for signing
+	BIP32Path             BIP32Path
+	HashedDomainSeparator [32]byte
+	HashedMessage         [32]byte
+}
+
+func (r *SignEIP712HashedRequest) MarshalADPU() ([]byte, error) {
+	buf, err := adpu.Marshal(&r.BIP32Path)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal BIP-32 path: %w", err)
+	}
+	buf = append(buf, r.HashedDomainSeparator[:]...)
+	buf = append(buf, r.HashedMessage[:]...)
 
 	return buf, nil
 }
@@ -188,13 +228,13 @@ func (v SignatureV) RecoverLegacy(chainID ChainID) SignatureV {
 	return v
 }
 
-type SignTransactionResponse struct {
+type SignDataResponse struct {
 	V SignatureV
 	R [32]byte
 	S [32]byte
 }
 
-func (r *SignTransactionResponse) UnmarshalADPU(data []byte) error {
+func (r *SignDataResponse) UnmarshalADPU(data []byte) error {
 	if len(data) < 65 {
 		return fmt.Errorf("data is too short, expected 65, got %d", len(data))
 	}

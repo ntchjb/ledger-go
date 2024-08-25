@@ -32,7 +32,10 @@ func (a *Address) String() string {
 	hexBytes := a.hexBytes()
 	hasher := sha3.NewLegacyKeccak256()
 
-	hasher.Write(hexBytes[2:])
+	_, err := hasher.Write(hexBytes[2:])
+	if err != nil {
+		return ""
+	}
 	hash := hasher.Sum(nil)
 
 	for i := 2; i < len(hexBytes); i++ {

@@ -14,6 +14,12 @@ func (d HexDisplay) MarshalText() (text []byte, err error) {
 	return
 }
 
+func (d HexDisplay) String() string {
+	str, _ := d.MarshalText()
+
+	return string(str)
+}
+
 func (d HexDisplay) MarshalJSON() ([]byte, error) {
 	return json.Marshal(hex.EncodeToString(d))
 }
