@@ -1,5 +1,14 @@
 package schema
 
+type RawRequest []byte
+
+func (r *RawRequest) MarshalADPU() ([]byte, error) {
+	if r == nil {
+		return nil, nil
+	}
+	return *r, nil
+}
+
 type RawResponse []byte
 
 func (r *RawResponse) UnmarshalADPU(data []byte) error {
@@ -7,6 +16,12 @@ func (r *RawResponse) UnmarshalADPU(data []byte) error {
 	copy(*r, data)
 
 	return nil
+}
+
+type EmptyRequest struct{}
+
+func (r *EmptyRequest) MarshalADPU() ([]byte, error) {
+	return []byte{}, nil
 }
 
 type EmptyResponse struct{}

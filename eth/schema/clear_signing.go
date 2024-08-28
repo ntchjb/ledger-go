@@ -1,5 +1,7 @@
 package schema
 
+import "fmt"
+
 type ExternalPluginResolution struct {
 	Payload   []byte
 	Signature []byte
@@ -41,4 +43,16 @@ type ClearSigningResolution struct {
 	Plugin []PluginResolution
 	// Show domain address information on Ledger display i.e. ENS domain name
 	Domains []DomainResolution
+}
+
+type ProvideERC20InfoResponse byte
+
+func (r *ProvideERC20InfoResponse) UnmarshalADPU(data []byte) error {
+	if len(data) == 0 {
+		return fmt.Errorf("data is too short, expected 1, got 0")
+	}
+
+	*r = ProvideERC20InfoResponse(data[0])
+
+	return nil
 }
