@@ -73,13 +73,13 @@ func (c *CSignField) Payload(registeredCoinRef map[int]uint8) ([]byte, error) {
 		if idx, ok := registeredCoinRef[c.CoinRef]; !ok {
 			return nil, ErrRegisteredCoinRefNotFound
 		} else {
-			return append([]byte{idx}, c.Signature...), nil
+			return append([]byte{idx}, signature...), nil
 		}
 	case CSIGN_FIELD_FORMAT_AMOUNT:
 		if idx, ok := registeredCoinRef[c.CoinRef]; !ok {
 			return nil, ErrRegisteredCoinRefNotFound
 		} else {
-			return append(append(display, idx), c.Signature...), nil
+			return append(append(display, idx), signature...), nil
 		}
 	default:
 		return nil, ErrUnknownFieldFormat

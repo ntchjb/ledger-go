@@ -127,6 +127,16 @@ func Test_Walk(t *testing.T) {
 								Item: eip712.BoolData(true),
 							},
 						},
+						{
+							Name: "neg",
+							Item: eip712.AtomicItem{
+								Item: eip712.NumberData{
+									Num:     uint256.NewInt(160),
+									Signed:  true,
+									NumBits: 16,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -275,6 +285,17 @@ func Test_Walk(t *testing.T) {
 						},
 					},
 					Path: "isActive",
+				},
+				{
+					Type: eip712.DATA_COMPONENT_ATOMIC,
+					DataCommand: eip712.DataCommand{
+						Component: eip712.DATA_COMPONENT_ATOMIC,
+						Value: []byte{
+							0x00, 0x02,
+							0xFF, 0x60,
+						},
+					},
+					Path: "neg",
 				},
 			},
 		},

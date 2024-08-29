@@ -206,7 +206,8 @@ func (f NumberData) Encode() []byte {
 
 	num := f.Num
 	if f.Signed {
-		num = new(uint256.Int).Not(f.Num).Add(f.Num, uint256.NewInt(1))
+		num = new(uint256.Int).Not(f.Num)
+		num = num.Add(num, uint256.NewInt(1))
 	}
 	b := num.Bytes32()
 	return b[32-numBytes:]
