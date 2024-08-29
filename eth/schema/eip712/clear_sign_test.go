@@ -316,3 +316,48 @@ func TestClearSigning_ContractPayload(t *testing.T) {
 		),
 	)
 }
+
+func TestCSignField_Action(t *testing.T) {
+	tests := []struct {
+		name   string
+		format eip712.CSignFieldFormat
+		action eip712.Action
+		err    error
+	}{
+		{
+			name:   "Raw format",
+			format: eip712.CSIGN_FIELD_FORMAT_RAW,
+			action: eip712.ACTION_RAW,
+		},
+		{
+			name:   "Datetime format",
+			format: eip712.CSIGN_FIELD_FORMAT_DATETIME,
+			action: eip712.ACTION_DATETIME,
+		},
+		{
+			name:   "Token format",
+			format: eip712.CSIGN_FIELD_FORMAT_TOKEN,
+			action: eip712.ACTION_AMOUNT_TOKEN_JOIN,
+		},
+		{
+			name:   "Amount format",
+			format: eip712.CSIGN_FIELD_FORMAT_AMOUNT,
+			action: eip712.ACTION_AMOUNT_VALUE_JOIN,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			csf := eip712.CSignField{
+				Format: test.format,
+			}
+
+			action, err := csf.Action()
+
+			assert.ErrorIs(t, err, test.err)
+			assert.Equal(t, test.action, action)
+		})
+	}
+}

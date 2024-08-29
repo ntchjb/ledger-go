@@ -1,6 +1,9 @@
 package eip712
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Component uint8
 
@@ -58,6 +61,10 @@ const (
 	FIELD_TYPE_DESC_TYPE_DYNAMIC_SIZED_BYTES FieldType = 0x07
 )
 
+var (
+	ErrInvalidData = errors.New("invalid field definition data")
+)
+
 type FieldTypeDescription struct {
 	// Is this struct type an array?
 	IsArray bool
@@ -74,7 +81,7 @@ type FieldDefinition struct {
 	// Type name, for custom type
 	TypeName string
 	// Type size in bytes (1-255 bytes) for types with fixed bits size specified
-	// i.e. uint256, int32, bytes20
+	// i.e. uint256, int32, bytes20 => 32, 4, 20 bytes respectively
 	TypeSize uint8
 	// Type and length of the array in every dimensions
 	// i.e. int[3][][4]
@@ -104,7 +111,7 @@ func (s *FieldDefinition) MarshalADPU() ([]byte, error) {
 	if s.TypeDescription.Type == FIELD_TYPE_DESC_TYPE_CUSTOM {
 		buf := make([]byte, 1+len(s.TypeName))
 		if len(s.TypeName) > 255 {
-			return nil, fmt.Errorf("type name is too long, expected <256, got %d", len(s.TypeName))
+			return nil, fmt.Errorf("type name is too long, expected <256, got %d: %w", len(s.TypeName), ErrInvalidData)
 		}
 		buf[0] = byte(len(s.TypeName))
 		copy(buf[1:], []byte(s.TypeName))
@@ -119,7 +126,7 @@ func (s *FieldDefinition) MarshalADPU() ([]byte, error) {
 	// #4: Set array type and its size for every dimensions, if this is array
 	if s.TypeDescription.IsArray {
 		if len(s.ArrayLevels) > 255 {
-			return nil, fmt.Errorf("array levels is too deep, expected <256, got %d", len(s.ArrayLevels))
+			return nil, fmt.Errorf("array levels is too deep, expected <256, got %d: %w", len(s.ArrayLevels), ErrInvalidData)
 		}
 		res = append(res, byte(len(s.ArrayLevels)))
 		for _, level := range s.ArrayLevels {
@@ -132,7 +139,7 @@ func (s *FieldDefinition) MarshalADPU() ([]byte, error) {
 
 	// #5: Set field name
 	if len(s.KeyName) > 255 {
-		return nil, fmt.Errorf("key name is too long, expected <256, got %d", len(s.KeyName))
+		return nil, fmt.Errorf("key name is too long, expected <256, got %d: %w", len(s.KeyName), ErrInvalidData)
 	}
 	res = append(res, byte(len(s.KeyName)))
 	res = append(res, []byte(s.KeyName)...)

@@ -24,6 +24,65 @@ type Domain struct {
 	Salt              [32]byte
 }
 
+func (d *Domain) IsSaltExists() bool {
+	isSaltExist := false
+	for _, num := range d.Salt {
+		if num != 0 {
+			isSaltExist = true
+			break
+		}
+	}
+
+	return isSaltExist
+}
+
+func (d *Domain) TypeStruct() TypeStruct {
+	res := TypeStruct{
+		Name: DOMAIN_TYPE_NAME,
+		Members: []FieldDefinition{
+			{
+				TypeDescription: FieldTypeDescription{
+					Type: FIELD_TYPE_DESC_TYPE_STRING,
+				},
+				KeyName: "name",
+			},
+			{
+				TypeDescription: FieldTypeDescription{
+					Type: FIELD_TYPE_DESC_TYPE_STRING,
+				},
+				KeyName: "version",
+			},
+			{
+				TypeDescription: FieldTypeDescription{
+					IsSizeSpecified: true,
+					Type:            FIELD_TYPE_DESC_TYPE_UINT,
+				},
+				TypeSize: 32,
+				KeyName:  "chainId",
+			},
+			{
+				TypeDescription: FieldTypeDescription{
+					Type: FIELD_TYPE_DESC_TYPE_ADDRESS,
+				},
+				KeyName: "verifyingContract",
+			},
+		},
+	}
+
+	if d.IsSaltExists() {
+		res.Members = append(res.Members, FieldDefinition{
+			TypeDescription: FieldTypeDescription{
+				IsSizeSpecified: true,
+				Type:            FIELD_TYPE_DESC_TYPE_FIXED_SIZE_BYTES,
+			},
+			TypeSize: 32,
+			KeyName:  "salt",
+		})
+	}
+
+	return res
+}
+
 func (d *Domain) StructItem() StructItem {
 	var res StructItem
 	res.TypeName = DOMAIN_TYPE_NAME
@@ -58,15 +117,7 @@ func (d *Domain) StructItem() StructItem {
 		},
 	}
 
-	isSaltExist := false
-	for _, num := range d.Salt {
-		if num != 0 {
-			isSaltExist = true
-			break
-		}
-	}
-
-	if isSaltExist {
+	if d.IsSaltExists() {
 		res.Members = append(res.Members, StructItemMember{
 			Name: "salt",
 			Item: AtomicItem{

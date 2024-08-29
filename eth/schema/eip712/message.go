@@ -24,6 +24,8 @@ type Message struct {
 }
 
 func (m *Message) SetCoinRefMap(signingData StructItem) error {
+	m.ClearSigning.CoinRefMap = make(map[int]schema.Address)
+
 	if err := signingData.Walk("", func(path string, item Item) error {
 		fieldInfo, ok := m.ClearSigning.Fields[path]
 		if !ok {

@@ -407,8 +407,8 @@ func (e *ethereumAppImpl) EIP712SendStructData(ctx context.Context, component ei
 		}
 		req = value[offset : offset+chunkSize]
 
-		e.logger.Debug("Send EIP712 data", "val", log.HexDisplay(req))
-		if err := adpu.Send(ctx, e.proto, ADPU_CLA, ADPU_INS_EIP712_CLEAR_SIGNING, p1, p2, &req, &res); err != nil {
+		e.logger.Debug("Send EIP712 data", "val", log.HexDisplay(req), "component", component, "p1", p1, "p2", p2)
+		if err := adpu.Send(ctx, e.proto, ADPU_CLA, ADPU_INS_EIP712_SEND_STRUCT_DATA, p1, p2, &req, &res); err != nil {
 			return fmt.Errorf("unable to send a send EIP712 data command to device: %w", err)
 		}
 
@@ -421,11 +421,12 @@ func (e *ethereumAppImpl) EIP712SendStructData(ctx context.Context, component ei
 func (e *ethereumAppImpl) sendEIP712Data(ctx context.Context, cs eip712.ClearSigning, domain eip712.Domain, coinRefRegistered map[int]uint8) eip712.WalkReader {
 	return func(path string, item eip712.Item) error {
 		// #1: Provide Clear signing information to device, if enabled
-		if item.Type() == eip712.DATA_COMPONENT_ATOMIC && cs.Enabled {
+		if cs.Enabled && item.Type() == eip712.DATA_COMPONENT_ATOMIC {
 			fieldInfo, fieldExists := cs.Fields[path]
 			if !fieldExists {
 				goto endOfClearSigning
 			}
+			e.logger.Debug("Setup ERC20 clear signing data")
 
 			// #1.1: Provide ERC20 info based on coinRef
 			if _, isERC20TokenProvided := coinRefRegistered[fieldInfo.CoinRef]; fieldInfo.Format == eip712.CSIGN_FIELD_FORMAT_TOKEN && fieldInfo.CoinRef >= 0 && !isERC20TokenProvided {
@@ -484,7 +485,9 @@ func (e *ethereumAppImpl) sendEIP712Data(ctx context.Context, cs eip712.ClearSig
 func (e *ethereumAppImpl) SignEIP712Message(ctx context.Context, bip32Path string, message eip712.Message) (schema.SignDataResponse, error) {
 	var res schema.SignDataResponse
 	// #1: Send type definition
-	for _, typeDef := range message.Types {
+	domainTypeStruct := message.Domain.TypeStruct()
+	allTypeStructs := append(eip712.TypeStructs{domainTypeStruct}, message.Types...)
+	for _, typeDef := range allTypeStructs {
 		if err := e.EIP712SendStructDefinition(ctx, eip712.TYPE_COMPONENT_NAME, []byte(typeDef.Name)); err != nil {
 			return res, fmt.Errorf("unable to send EIP712 struct definition, type name: %w", err)
 		}

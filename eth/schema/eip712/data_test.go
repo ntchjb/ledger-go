@@ -655,3 +655,58 @@ func TestDomain_StructItem(t *testing.T) {
 		},
 	}, structItem)
 }
+
+func TestDomain_TypeStruct(t *testing.T) {
+	domain := eip712.Domain{
+		Name:    "SomeDAppsName",
+		Version: "1.0.0",
+		ChainID: uint256.NewInt(1),
+		VerifyingContract: schema.Address{
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+		},
+		Salt: [32]byte{0x01},
+	}
+
+	typeStruct := domain.TypeStruct()
+
+	assert.Equal(t, eip712.TypeStruct{
+		Name: eip712.DOMAIN_TYPE_NAME,
+		Members: []eip712.FieldDefinition{
+			{
+				TypeDescription: eip712.FieldTypeDescription{
+					Type: eip712.FIELD_TYPE_DESC_TYPE_STRING,
+				},
+				KeyName: "name",
+			},
+			{
+				TypeDescription: eip712.FieldTypeDescription{
+					Type: eip712.FIELD_TYPE_DESC_TYPE_STRING,
+				},
+				KeyName: "version",
+			},
+			{
+				TypeDescription: eip712.FieldTypeDescription{
+					IsSizeSpecified: true,
+					Type:            eip712.FIELD_TYPE_DESC_TYPE_UINT,
+				},
+				TypeSize: 32,
+				KeyName:  "chainId",
+			},
+			{
+				TypeDescription: eip712.FieldTypeDescription{
+					Type: eip712.FIELD_TYPE_DESC_TYPE_ADDRESS,
+				},
+				KeyName: "verifyingContract",
+			},
+			{
+				TypeDescription: eip712.FieldTypeDescription{
+					IsSizeSpecified: true,
+					Type:            eip712.FIELD_TYPE_DESC_TYPE_FIXED_SIZE_BYTES,
+				},
+				TypeSize: 32,
+				KeyName:  "salt",
+			},
+		},
+	}, typeStruct)
+}
