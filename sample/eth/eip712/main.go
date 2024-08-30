@@ -84,6 +84,7 @@ func main() {
 	defer cancel()
 	walletPath := "m'/44'/60'/0'/0/0"
 
+	// DATA from https://crypto-assets-service.api.ledger.com/v1/dapps?output=eip712_signatures&eip712_signatures_version=v2&chain_id=10&contracts=0x000000000022d473030f116ddee9f6b43ac78ba3
 	uniswapXLimitOrderContractSignature, _ := hex.DecodeString("3045022100f607f91959ba77569e1bbc520fd61ebd0cf2c6b0b4bfa449c45e86ac49f048e602200a1f105838d380ef60f765dcb0d3bcfd2eb9af8dee82994a942bf804eb5c144c")
 	uniXApproveToSpenderSig, _ := hex.DecodeString("304402203ae7648a1fcc87edd672587dcd9c4222aef9b119eb5573945982eb4763c9c110022072d0a4d1e23db36c3b4852bc61b8500e0a9b4a58d56ed6b71d8491e154e1773d")
 	uniXApproveTokenSig, _ := hex.DecodeString("3045022100d89ed36285b1474f6caac45467ccf5ded7e63218542cb36cbbc25970416479370220296bb6d4643dd43d842c0f52227fc3497c23f8402404a50537e8e6e76a0406a0")

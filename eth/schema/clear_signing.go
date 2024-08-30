@@ -1,6 +1,33 @@
 package schema
 
-import "fmt"
+import (
+	"encoding/binary"
+	"fmt"
+)
+
+type Challenge [4]byte
+
+func (c *Challenge) UnmarshalADPU(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data is too short, expected 4, got %d", len(data))
+	}
+
+	copy((*c)[:], data)
+
+	return nil
+}
+
+type DomainNameBlob []byte
+
+func (d *DomainNameBlob) MarshalADPU() ([]byte, error) {
+	var res []byte
+	var length [2]byte
+
+	binary.BigEndian.PutUint16(length[:], uint16(len(*d)))
+	res = append(length[:], (*d)...)
+
+	return res, nil
+}
 
 type ExternalPluginResolution struct {
 	Payload   []byte
