@@ -79,7 +79,7 @@ type FieldDefinition struct {
 	// Type description of given field
 	TypeDescription FieldTypeDescription
 	// Type name, for custom type
-	TypeName string
+	CustomTypeName string
 	// Type size in bytes (1-255 bytes) for types with fixed bits size specified
 	// i.e. uint256, int32, bytes20 => 32, 4, 20 bytes respectively
 	TypeSize uint8
@@ -109,12 +109,12 @@ func (s *FieldDefinition) MarshalADPU() ([]byte, error) {
 
 	// #2: Set type name length, and type name string for custom type (1 + len(s.TypeName) bytes)
 	if s.TypeDescription.Type == FIELD_TYPE_DESC_TYPE_CUSTOM {
-		buf := make([]byte, 1+len(s.TypeName))
-		if len(s.TypeName) > 255 {
-			return nil, fmt.Errorf("type name is too long, expected <256, got %d: %w", len(s.TypeName), ErrInvalidData)
+		buf := make([]byte, 1+len(s.CustomTypeName))
+		if len(s.CustomTypeName) > 255 {
+			return nil, fmt.Errorf("type name is too long, expected <256, got %d: %w", len(s.CustomTypeName), ErrInvalidData)
 		}
-		buf[0] = byte(len(s.TypeName))
-		copy(buf[1:], []byte(s.TypeName))
+		buf[0] = byte(len(s.CustomTypeName))
+		copy(buf[1:], []byte(s.CustomTypeName))
 		res = append(res, buf...)
 	}
 

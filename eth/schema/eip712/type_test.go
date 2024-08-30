@@ -99,8 +99,8 @@ func TestFieldDefinition_MarshalADPU(t *testing.T) {
 					IsSizeSpecified: false,
 					Type:            eip712.FIELD_TYPE_DESC_TYPE_CUSTOM,
 				},
-				TypeName: "Mail",
-				KeyName:  keyName,
+				CustomTypeName: "Mail",
+				KeyName:        keyName,
 			},
 			res: []byte{
 				0b0000_0000,
