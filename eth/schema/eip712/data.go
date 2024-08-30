@@ -46,28 +46,33 @@ func (d *Domain) TypeStruct() TypeStruct {
 				},
 				KeyName: "name",
 			},
-			{
-				TypeDescription: FieldTypeDescription{
-					Type: FIELD_TYPE_DESC_TYPE_STRING,
-				},
-				KeyName: "version",
-			},
-			{
-				TypeDescription: FieldTypeDescription{
-					IsSizeSpecified: true,
-					Type:            FIELD_TYPE_DESC_TYPE_UINT,
-				},
-				TypeSize: 32,
-				KeyName:  "chainId",
-			},
-			{
-				TypeDescription: FieldTypeDescription{
-					Type: FIELD_TYPE_DESC_TYPE_ADDRESS,
-				},
-				KeyName: "verifyingContract",
-			},
 		},
 	}
+
+	if d.Version != "" {
+		res.Members = append(res.Members, FieldDefinition{
+			TypeDescription: FieldTypeDescription{
+				Type: FIELD_TYPE_DESC_TYPE_STRING,
+			},
+			KeyName: "version",
+		})
+	}
+
+	res.Members = append(res.Members,
+		FieldDefinition{
+			TypeDescription: FieldTypeDescription{
+				IsSizeSpecified: true,
+				Type:            FIELD_TYPE_DESC_TYPE_UINT,
+			},
+			TypeSize: 32,
+			KeyName:  "chainId",
+		},
+		FieldDefinition{
+			TypeDescription: FieldTypeDescription{
+				Type: FIELD_TYPE_DESC_TYPE_ADDRESS,
+			},
+			KeyName: "verifyingContract",
+		})
 
 	if d.IsSaltExists() {
 		res.Members = append(res.Members, FieldDefinition{
@@ -93,29 +98,33 @@ func (d *Domain) StructItem() StructItem {
 				Item: StringData(d.Name),
 			},
 		},
-		{
+	}
+
+	if d.Version != "" {
+		res.Members = append(res.Members, StructItemMember{
 			Name: "version",
 			Item: AtomicItem{
 				Item: StringData(d.Version),
 			},
-		},
-		{
+		})
+	}
+
+	res.Members = append(res.Members,
+		StructItemMember{
 			Name: "chainId",
 			Item: AtomicItem{
 				Item: NumberData{
 					Num:     d.ChainID,
 					NumBits: 256,
-					Signed:  false,
 				},
 			},
 		},
-		{
+		StructItemMember{
 			Name: "verifyingContract",
 			Item: AtomicItem{
 				Item: AddressData(d.VerifyingContract),
 			},
-		},
-	}
+		})
 
 	if d.IsSaltExists() {
 		res.Members = append(res.Members, StructItemMember{
@@ -250,7 +259,7 @@ type NumberData struct {
 }
 
 func (f NumberData) Encode() []byte {
-	numBytes := f.NumBits / 8
+	numBytes := int(f.NumBits / 8)
 	if numBytes > 32 {
 		numBytes = 32
 	}
@@ -260,8 +269,11 @@ func (f NumberData) Encode() []byte {
 		num = new(uint256.Int).Not(f.Num)
 		num = num.Add(num, uint256.NewInt(1))
 	}
-	b := num.Bytes32()
-	return b[32-numBytes:]
+	b := num.Bytes()
+	if len(b) > numBytes {
+		return b[len(b)-numBytes:]
+	}
+	return b
 }
 
 type BoolData bool

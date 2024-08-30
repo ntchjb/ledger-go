@@ -157,8 +157,8 @@ func Test_Walk(t *testing.T) {
 					DataCommand: eip712.DataCommand{
 						Component: eip712.DATA_COMPONENT_ATOMIC,
 						Value: []byte{
-							0x00, 0x04,
-							0x00, 0x00, 0x00, 0x0a,
+							0x00, 0x01,
+							0x0a,
 						},
 					},
 					Path: "id",
@@ -351,8 +351,8 @@ func Test_Walk(t *testing.T) {
 					DataCommand: eip712.DataCommand{
 						Component: eip712.DATA_COMPONENT_ATOMIC,
 						Value: []byte{
-							0x00, 0x04,
-							0x00, 0x00, 0x00, 0x0a,
+							0x00, 0x01,
+							0x0a,
 						},
 					},
 					Path: "id",
@@ -421,8 +421,8 @@ func Test_Walk(t *testing.T) {
 					DataCommand: eip712.DataCommand{
 						Component: eip712.DATA_COMPONENT_ATOMIC,
 						Value: []byte{
-							0x00, 0x04,
-							0x00, 0x00, 0x00, 0x0a,
+							0x00, 0x01,
+							0x0a,
 						},
 					},
 					Path: "id",
@@ -477,8 +477,8 @@ func Test_Walk(t *testing.T) {
 					DataCommand: eip712.DataCommand{
 						Component: eip712.DATA_COMPONENT_ATOMIC,
 						Value: []byte{
-							0x00, 0x04,
-							0x00, 0x00, 0x00, 0x0a,
+							0x00, 0x01,
+							0x0a,
 						},
 					},
 					Path: "id",
@@ -552,8 +552,8 @@ func Test_Walk(t *testing.T) {
 					DataCommand: eip712.DataCommand{
 						Component: eip712.DATA_COMPONENT_ATOMIC,
 						Value: []byte{
-							0x00, 0x04,
-							0x00, 0x00, 0x00, 0x0a,
+							0x00, 0x01,
+							0x0a,
 						},
 					},
 					Path: "id",
