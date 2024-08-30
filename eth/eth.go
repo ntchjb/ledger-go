@@ -473,6 +473,10 @@ func (e *ethereumAppImpl) sendEIP712Data(ctx context.Context, cs eip712.ClearSig
 
 	endOfClearSigning:
 		// #2: Send EIP712 data to device
+		if item.Type() == eip712.DATA_COMPONENT_ROOT {
+			return nil
+		}
+
 		dataCmd := item.DataCommand()
 		if err := e.EIP712SendStructData(ctx, dataCmd.Component, dataCmd.Value); err != nil {
 			return fmt.Errorf("unable to send data: %w", err)
@@ -485,9 +489,7 @@ func (e *ethereumAppImpl) sendEIP712Data(ctx context.Context, cs eip712.ClearSig
 func (e *ethereumAppImpl) SignEIP712Message(ctx context.Context, bip32Path string, message eip712.Message) (schema.SignDataResponse, error) {
 	var res schema.SignDataResponse
 	// #1: Send type definition
-	domainTypeStruct := message.Domain.TypeStruct()
-	allTypeStructs := append(eip712.TypeStructs{domainTypeStruct}, message.Types...)
-	for _, typeDef := range allTypeStructs {
+	for _, typeDef := range message.Types {
 		if err := e.EIP712SendStructDefinition(ctx, eip712.TYPE_COMPONENT_NAME, []byte(typeDef.Name)); err != nil {
 			return res, fmt.Errorf("unable to send EIP712 struct definition, type name: %w", err)
 		}
@@ -504,20 +506,28 @@ func (e *ethereumAppImpl) SignEIP712Message(ctx context.Context, bip32Path strin
 
 	// #2: Activate clear signing, if enabled
 	if message.ClearSigning.Enabled {
+		e.logger.Debug("Activate clear signing for EIP712")
 		if err := e.EIP712SendClearSigningData(ctx, eip712.ACTION_ACTIVATE, nil); err != nil {
 			return res, fmt.Errorf("unable to activate clear signing: %w", err)
 		}
 	}
 
-	// #3: Send domain data
-	structItem := message.Domain.StructItem()
+	// #3: Send domain root type and data
+	domainStructItem := message.Domain.StructItem()
 	coinRefRegisteredOnDevice := make(map[int]uint8)
-	if err := structItem.Walk("", e.sendEIP712Data(ctx, message.ClearSigning, message.Domain, coinRefRegisteredOnDevice)); err != nil {
+	domainRootCmd := domainStructItem.DataCommand()
+	if err := e.EIP712SendStructData(ctx, domainRootCmd.Component, domainRootCmd.Value); err != nil {
+		return res, fmt.Errorf("unable to set domain root data: %w", err)
+	}
+	if err := domainStructItem.Walk("", e.sendEIP712Data(ctx, eip712.ClearSigning{}, message.Domain, coinRefRegisteredOnDevice)); err != nil {
 		return res, fmt.Errorf("unable to send domain data: %w", err)
 	}
 
 	// #4: Send contract name as clear signing data, if any
 	if message.ClearSigning.Enabled {
+		if err := message.SetCoinRefMap(message.Primary); err != nil {
+			return res, fmt.Errorf("unable to set coin ref map for primary data: %w", err)
+		}
 		payload := message.ClearSigning.ContractPayload()
 		if err := e.EIP712SendClearSigningData(ctx, eip712.ACTION_MESSAGE_INFO, payload); err != nil {
 			return res, fmt.Errorf("unable to send EIP712 clear signing data; contract info: %w", err)
@@ -525,6 +535,10 @@ func (e *ethereumAppImpl) SignEIP712Message(ctx context.Context, bip32Path strin
 	}
 
 	// #5: Send primary data
+	primaryRootCmd := message.Primary.DataCommand()
+	if err := e.EIP712SendStructData(ctx, primaryRootCmd.Component, primaryRootCmd.Value); err != nil {
+		return res, fmt.Errorf("unable to set primary root data: %w", err)
+	}
 	if err := message.Primary.Walk("", e.sendEIP712Data(ctx, message.ClearSigning, message.Domain, coinRefRegisteredOnDevice)); err != nil {
 		return res, fmt.Errorf("unable to send primary data: %w", err)
 	}
