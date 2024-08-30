@@ -134,7 +134,7 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 	blocks := a.createDataFrames(command)
 	for i, block := range blocks {
 		_, err := a.Device.Write(ctx, block)
-		a.logger.Debug("SEND ==>", "i", i)
+		a.logger.Debug("SEND ==>", "i", i, "block", log.HexDisplay(block))
 		if err != nil {
 			return nil, fmt.Errorf("unable to write a block to HID device via interrupt OUT: %w", err)
 		}
