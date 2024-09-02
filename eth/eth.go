@@ -100,7 +100,7 @@ type EthereumApp interface {
 	// and provide information on Ledger device display during transaction signing
 	// This function shall be run before `SignTransaction`
 	// `info` can be obtained from Ledger Live API
-	SetExternalPlugin(ctx context.Context, info []byte) error
+	SetExternalPlugin(ctx context.Context, payload []byte, signature []byte) error
 }
 
 type ethereumAppImpl struct {
@@ -399,8 +399,6 @@ func (e *ethereumAppImpl) ProvideDomainNameInformation(ctx context.Context, info
 	blob := schema.DomainNameBlob(info)
 	var res schema.EmptyResponse
 
-	e.logger.Debug("Get challenge data")
-
 	payload, err := adpu.Marshal(&blob)
 	if err != nil {
 		return fmt.Errorf("unable to marshal domain name blob: %w", err)
@@ -421,6 +419,8 @@ func (e *ethereumAppImpl) ProvideDomainNameInformation(ctx context.Context, info
 		if err := adpu.Send(ctx, e.proto, ADPU_CLA, ADPU_INS_PROVIDE_DOMAIN_NAME, p1, p2, &req, &res); err != nil {
 			return fmt.Errorf("unable to send provide domain name information command to device: %w", err)
 		}
+
+		offset += chunkSize
 	}
 
 	return nil
@@ -454,13 +454,13 @@ func (e *ethereumAppImpl) SetPlugin(ctx context.Context, info []byte) error {
 	return nil
 }
 
-func (e *ethereumAppImpl) SetExternalPlugin(ctx context.Context, info []byte) error {
-	req := schema.RawRequest(info)
+func (e *ethereumAppImpl) SetExternalPlugin(ctx context.Context, payload []byte, signature []byte) error {
+	req := schema.RawRequest(append(payload, signature...))
 	var res schema.EmptyResponse
 
 	var p1, p2 uint8
 
-	e.logger.Debug("Set external plugin", "info", log.HexDisplay(info))
+	e.logger.Debug("Set external plugin", "info", log.HexDisplay(req))
 	if err := adpu.Send(ctx, e.proto, ADPU_CLA, ADPU_INS_SET_EXTERNAL_PLUGIN, p1, p2, &req, &res); err != nil {
 		return fmt.Errorf("unable to send set external plugin to device: %w", err)
 	}

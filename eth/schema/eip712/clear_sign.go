@@ -1,12 +1,8 @@
 package eip712
 
 import (
-	"encoding/base64"
-	"encoding/binary"
 	"errors"
-	"fmt"
 
-	"github.com/holiman/uint256"
 	"github.com/ntchjb/ledger-go/eth/schema"
 )
 
@@ -101,79 +97,13 @@ func (c *CSignField) Action() (Action, error) {
 	}
 }
 
-type CSignTokenInfo struct {
-	ContractAddress schema.Address
-	Ticker          string
-	Decimals        uint32
-	ChainID         uint32
-	Signature       []byte
-
-	Raw []byte
-}
-
-type ERC20Signatures map[[24]byte]CSignTokenInfo
-
-func (e ERC20Signatures) FindByChainIDAndAddress(chainID *uint256.Int, address schema.Address) (CSignTokenInfo, bool) {
-	var key [24]byte
-	bChainID := chainID.Bytes32()
-	copy(key[:4], bChainID[len(bChainID)-4:])
-	copy(key[4:], address[:])
-
-	res, ok := e[key]
-	return res, ok
-}
-
-func ParseERC20SignatureBlobs(blob string) (ERC20Signatures, error) {
-	res := make(map[[24]byte]CSignTokenInfo)
-	blobBytes, err := base64.StdEncoding.DecodeString(blob)
-	if err != nil {
-		return res, fmt.Errorf("unable to decode base64 blob: %w", err)
-	}
-	for i := 0; i < len(blobBytes); {
-		var tokenInfo CSignTokenInfo
-		var key [24]byte
-
-		recordLength := binary.BigEndian.Uint32(blobBytes[i : i+4])
-		i += 4
-
-		record := blobBytes[i : i+int(recordLength)]
-
-		recIdx := 0
-		tickerLength := int(record[recIdx])
-		recIdx += 1
-
-		tokenInfo.Ticker = string(record[recIdx : recIdx+tickerLength])
-		recIdx += tickerLength
-
-		copy(tokenInfo.ContractAddress[:], record[recIdx:recIdx+20])
-		copy(key[4:], record[recIdx:recIdx+20])
-		recIdx += 20
-
-		tokenInfo.Decimals = binary.BigEndian.Uint32(record[recIdx : recIdx+4])
-		recIdx += 4
-
-		tokenInfo.ChainID = binary.BigEndian.Uint32(record[recIdx : recIdx+4])
-		copy(key[:4], record[recIdx:recIdx+4])
-		recIdx += 4
-
-		tokenInfo.Signature = record[recIdx:]
-		tokenInfo.Raw = record
-
-		res[key] = tokenInfo
-
-		i += int(recordLength)
-	}
-
-	return res, nil
-}
-
 type ClearSigning struct {
 	Enabled bool
 
 	ContractInfo CSignContract
 	// Fields' key is path
 	Fields          map[string]CSignField
-	ERC20Signatures ERC20Signatures
+	ERC20Signatures schema.ERC20Signatures
 	// Key is CoinRef and Value is path
 	// If Key is 255, it is domain's verifying contract
 	CoinRefMap map[int]schema.Address

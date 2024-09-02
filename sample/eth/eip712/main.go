@@ -18,6 +18,7 @@ import (
 	"github.com/ntchjb/ledger-go/eth/schema"
 	"github.com/ntchjb/ledger-go/eth/schema/eip712"
 	"github.com/ntchjb/ledger-go/log"
+	"github.com/ntchjb/ledger-go/sample/eth/util"
 )
 
 func main() {
@@ -551,7 +552,7 @@ func main() {
 					Signature: uniXApprovalExpire,
 				},
 			},
-			ERC20Signatures: erc20Sigs,
+			ERC20Signatures: util.ERC20Sigs,
 		},
 	}
 	eip712Sig, err := ethApp.SignEIP712Message(ctx, walletPath, message)
