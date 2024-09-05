@@ -19,7 +19,13 @@ const (
 )
 
 var (
-	ErrSWNotOK = errors.New("SW not OK")
+	ErrSWNotOK               = errors.New("SW not OK")
+	ErrADPUPayloadTooLong    = errors.New("ADPU data is too long")
+	ErrIncompleteWrite       = errors.New("incomplete block write")
+	ErrIncompleteRead        = errors.New("incomplete block read")
+	ErrBlockChannelNotMatch  = errors.New("block channel not match")
+	ErrBlockTagNotMatch      = errors.New("block tag not match")
+	ErrBlockSequenceNotMatch = errors.New("block sequence not match")
 )
 
 type Response struct {
@@ -90,20 +96,17 @@ func (a *protocolImpl) createDataFrames(data []byte) [][]byte {
 
 func (a *protocolImpl) reduceDataFrames(res Response, expectedSequence uint16, block []byte) (Response, error) {
 	a.logger.Debug("Reducing a frame", "blockLength", len(block), "expectedSequence", expectedSequence, "resLength", res.Length)
-	if len(block) < 5 {
-		return res, fmt.Errorf("chunk data is too small, expected >=5, but got %d", len(block))
-	}
 	channel := binary.BigEndian.Uint16(block[:2])
 	tag := block[2]
 	sequence := binary.BigEndian.Uint16(block[3:5])
 	if channel != a.channel {
-		return res, fmt.Errorf("channel does not match, expected %d, got %d", a.channel, channel)
+		return res, fmt.Errorf("channel does not match, expected %d, got %d: %w", a.channel, channel, ErrBlockChannelNotMatch)
 	}
 	if tag != byte(FRAME_HEADER_TAG) {
-		return res, fmt.Errorf("tag does not match, expected %d, got %d", FRAME_HEADER_TAG, tag)
+		return res, fmt.Errorf("tag does not match, expected %d, got %d: %w", FRAME_HEADER_TAG, tag, ErrBlockTagNotMatch)
 	}
 	if sequence != expectedSequence {
-		return res, fmt.Errorf("sequence does not match, expected %d, got %d", expectedSequence, sequence)
+		return res, fmt.Errorf("sequence does not match, expected %d, got %d: %w", expectedSequence, sequence, ErrBlockSequenceNotMatch)
 	}
 
 	// Read length for the first block
@@ -133,10 +136,13 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 	// #1: Send ADPU command to device, in blocks
 	blocks := a.createDataFrames(command)
 	for i, block := range blocks {
-		_, err := a.Device.Write(ctx, block)
+		n, err := a.Device.Write(ctx, block)
 		a.logger.Debug("SEND ==>", "i", i, "block", log.HexDisplay(block))
 		if err != nil {
 			return nil, fmt.Errorf("unable to write a block to HID device via interrupt OUT: %w", err)
+		}
+		if n != len(block) {
+			return nil, fmt.Errorf("incomplete block write, need to write %d bytes, only written %d bytes: %w", len(block), n, ErrIncompleteWrite)
 		}
 	}
 
@@ -150,7 +156,7 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 			return nil, fmt.Errorf("unable to read a block from HID device via interrupt IN: res: %v, err: %w", res, err)
 		}
 		if n != int(a.packetSize) {
-			return nil, fmt.Errorf("read data is not equal to expected packet size, expected %d, got %d", a.packetSize, n)
+			return nil, fmt.Errorf("read data is not equal to expected packet size, expected %d, got %d, err: %w", a.packetSize, n, ErrIncompleteRead)
 		}
 		res, err = a.reduceDataFrames(res, expectedSequence, data)
 		if err != nil {
@@ -167,7 +173,7 @@ func (a *protocolImpl) Exchange(ctx context.Context, command []byte) ([]byte, er
 func (a *protocolImpl) Send(ctx context.Context, cla, ins, p1, p2 uint8, data []byte) ([]byte, uint16, error) {
 	var command []byte
 	if len(data) > 255 {
-		return nil, 0, fmt.Errorf("maximum data length of ADPU command exceeded, expected <256, got %d", len(data))
+		return nil, 0, fmt.Errorf("maximum data length of ADPU command exceeded, expected <256, got %d, err: %w", len(data), ErrADPUPayloadTooLong)
 	}
 	a.logger.Debug("Sending ADPU command", "cla", cla, "ins", ins, "p1", p1, "p2", p2, "data", log.HexDisplay(data))
 	command = append([]byte{cla, ins, p1, p2, uint8(len(data))}, data...)
